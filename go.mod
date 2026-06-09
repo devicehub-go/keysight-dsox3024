@@ -4,7 +4,6 @@ go 1.25.4
 
 require (
 	github.com/devicehub-go/unicomm v0.0.0-20251128162816-bc0c3bed619d
-	golang.org/x/image v0.30.0
 	gonum.org/v1/plot v0.17.0
 )
 
@@ -17,6 +16,7 @@ require (
 	github.com/creack/goselect v0.1.2 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
 	go.bug.st/serial v1.6.4 // indirect
+	golang.org/x/image v0.30.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 )
