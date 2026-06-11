@@ -111,10 +111,10 @@ func main() {
 	}
 	defer osc.Disconnect()
 
-	if err := osc.SetWaveformPointsMode("NORMal"); err != nil {
+	if err := osc.SetWaveformPointsMode("RAW"); err != nil {
 		log.Fatal(err)
 	}
-	if err := osc.SetWaveformPoints(250); err != nil {
+	if err := osc.SetWaveformPoints(1000); err != nil {
 		log.Fatal(err)
 	}
 
@@ -130,7 +130,7 @@ func main() {
 
 		curves := make(map[int]dsoproto.Waveform)
 		for _, ch := range []int{1, 2, 3} {
-			waveform, err := osc.GetWaveform(ch)
+			waveform, err := osc.GeTriggeredtWaveform(ch, 5*time.Second)
 			if err != nil {
 				log.Fatal(err)
 			}
