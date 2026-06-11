@@ -1,7 +1,6 @@
 package dsox3024_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -16,23 +15,21 @@ func TestOscilloscope(t *testing.T) {
 		TCP: unicommtcp.TCPOptions{
 			Host:         "10.0.4.161",
 			Port:         5025,
-			ReadTimeout:  1 * time.Second,
-			WriteTimeout: 1 * time.Second,
+			ReadTimeout:  10 * time.Second,
+			WriteTimeout: 10 * time.Second,
 		},
 	})
 	if err := osc.Connect(); err != nil {
-		t.Fatal(err)
+		t.Fatalf("error on connect: %v", err)
 	}
 	defer osc.Disconnect()
 
-	osc.SetWaveformPointsMode("NORMal")
-	osc.SetWaveformPoints(250)
-	points, _ := osc.Query(":WAVEform:POINts?")
-	fmt.Println(string(points))
-	waveform, err := osc.GetWaveform(1)
+	ini := time.Now()
+	waveform, err := osc.GeTriggeredtWaveform(1, 5*time.Second)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("error on get waveform: %v", err)
 	}
+	t.Log(time.Since(ini))
 	t.Log(len(waveform.Timestamps))
 	t.Log(len(waveform.Values))
 }

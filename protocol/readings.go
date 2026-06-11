@@ -6,6 +6,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Preamble struct {
@@ -159,21 +160,79 @@ func (d *DSOX3024) GetWaveform(channel int) (*Waveform, error) {
 		":WAVeform:FORMat BYTE",
 		":WAVeform:UNSigned OFF",
 	}); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error on setup acquisition: %v", err)
 	}
 
 	data, err := d.QueryByteSequence(":WAV:DATA?")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error on request data: %v", err)
 	}
 
 	p, err := d.GetPreamble(channel)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error on get preamble: %v", err)
 	}
 	values := make([]float64, len(data))
 	for i, b := range data {
-		adc := float64(b)
+		adc := float64(int8(b))
+		values[i] = (adc-p.yReference)*p.yIncrement + p.yOrigin
+	}
+	timestamps := make([]float64, len(values))
+	for i := range timestamps {
+		timestamps[i] = p.xOrigin + (float64(i)-p.xReference)*p.xIncrement
+	}
+
+	return &Waveform{
+		Values:     values,
+		Timestamps: timestamps,
+	}, nil
+}
+
+func (d *DSOX3024) GeTriggeredtWaveform(channel int, timeout time.Duration) (*Waveform, error) {
+	if err := d.Write(":SINGle"); err != nil {
+		return nil, fmt.Errorf("failed to arm acquisition: %w", err)
+	}
+
+	deadline := time.Now().Add(timeout)
+	for {
+		if time.Now().After(deadline) {
+			_ = d.Write(":STOP")
+			return nil, fmt.Errorf("timed out waiting for trigger after %s", timeout)
+		}
+		resp, err := d.Query(":OPERegister:CONDition?")
+		if err != nil {
+			return nil, fmt.Errorf("failed to poll acquisition status: %w", err)
+		}
+		val, err := strconv.Atoi(strings.TrimSpace(string(resp)))
+		if err != nil {
+			return nil, fmt.Errorf("unexpected OPERegister response %q: %w", string(resp), err)
+		}
+		if val&0x8 == 0 {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	if err := d.WriteSequence([]string{
+		fmt.Sprintf(":WAV:SOUR CHANnel%d", channel),
+		":WAVeform:FORMat BYTE",
+		":WAVeform:UNSigned OFF",
+	}); err != nil {
+		return nil, fmt.Errorf("failed to configure waveform source: %w", err)
+	}
+
+	data, err := d.QueryByteSequence(":WAV:DATA?")
+	if err != nil {
+		return nil, fmt.Errorf("error on request data: %v", err)
+	}
+
+	p, err := d.GetPreamble(channel)
+	if err != nil {
+		return nil, fmt.Errorf("error on get preamble: %v", err)
+	}
+	values := make([]float64, len(data))
+	for i, b := range data {
+		adc := float64(int8(b))
 		values[i] = (adc-p.yReference)*p.yIncrement + p.yOrigin
 	}
 	timestamps := make([]float64, len(values))
